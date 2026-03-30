@@ -1,0 +1,192 @@
+
+{
+  "name": "Place",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do local"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-friendly name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "balneario",
+        "hotel_pousada",
+        "restaurante",
+        "atrativo_natural",
+        "atrativo_cultural",
+        "evento",
+        "artesanato",
+        "servico"
+      ],
+      "description": "Categoria principal"
+    },
+    "city": {
+      "type": "string",
+      "enum": [
+        "Macap\u00e1",
+        "Santana",
+        "Laranjal do Jari",
+        "Oiapoque",
+        "Mazag\u00e3o",
+        "Porto Grande",
+        "Tartarugalzinho",
+        "Amap\u00e1",
+        "Cal\u00e7oene",
+        "Pracu\u00faba",
+        "Serra do Navio",
+        "Pedra Branca do Amapari",
+        "Ferreira Gomes",
+        "Cutias",
+        "Itaubal",
+        "Vit\u00f3ria do Jari"
+      ],
+      "description": "Cidade do Amap\u00e1"
+    },
+    "neighborhood": {
+      "type": "string",
+      "description": "Bairro ou localidade"
+    },
+    "description_short": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o curta (at\u00e9 200 caracteres)"
+    },
+    "description_full": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o completa"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Longitude"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs das fotos"
+    },
+    "cover_photo": {
+      "type": "string",
+      "description": "Foto de capa"
+    },
+    "how_to_get_there": {
+      "type": "string",
+      "description": "Como chegar (estrada, rio, embarca\u00e7\u00e3o)"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "contact_whatsapp": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_instagram": {
+      "type": "string"
+    },
+    "opening_hours": {
+      "type": "string",
+      "description": "Hor\u00e1rios de funcionamento"
+    },
+    "price_range": {
+      "type": "string",
+      "enum": [
+        "gratuito",
+        "barato",
+        "moderado",
+        "caro"
+      ],
+      "description": "Faixa de pre\u00e7o"
+    },
+    "price_details": {
+      "type": "string",
+      "description": "Detalhes de pre\u00e7o"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags: familia, pet_friendly, acessivel, ecoturismo, gastronomia, artesanato, cultural, aventura, rio, trilha, praia_fluvial"
+    },
+    "accessibility_info": {
+      "type": "string",
+      "description": "Informa\u00e7\u00f5es de acessibilidade"
+    },
+    "safety_info": {
+      "type": "string",
+      "description": "Informa\u00e7\u00f5es de seguran\u00e7a"
+    },
+    "seasonality": {
+      "type": "string",
+      "description": "Melhor \u00e9poca/sazonalidade (chuvas, cheias)"
+    },
+    "infrastructure": {
+      "type": "string",
+      "description": "Infraestrutura dispon\u00edvel (banheiros, estacionamento, etc)"
+    },
+    "rules": {
+      "type": "string",
+      "description": "Regras do local"
+    },
+    "local_tips": {
+      "type": "string",
+      "description": "Dicas de moradores"
+    },
+    "access_type": {
+      "type": "string",
+      "enum": [
+        "estrada_pavimentada",
+        "estrada_terra",
+        "embarcacao",
+        "trilha",
+        "misto"
+      ],
+      "description": "Tipo de acesso"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "published",
+        "draft",
+        "pending_review",
+        "archived"
+      ],
+      "default": "published"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "average_rating": {
+      "type": "number",
+      "default": 0
+    },
+    "review_count": {
+      "type": "number",
+      "default": 0
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Servi\u00e7os: wifi, estacionamento, banheiro, restaurante, camping, piscina, churrasqueira, playground"
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "city"
+  ]
+}

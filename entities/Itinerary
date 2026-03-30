@@ -1,0 +1,48 @@
+{
+  "name": "Itinerary",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo do roteiro"
+    },
+    "description": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "places": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string"
+          },
+          "place_name": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Locais do roteiro em ordem"
+    },
+    "duration_days": {
+      "type": "number",
+      "description": "Dura\u00e7\u00e3o em dias"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

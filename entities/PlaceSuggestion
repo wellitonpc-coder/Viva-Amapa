@@ -1,0 +1,122 @@
+{
+  "name": "PlaceSuggestion",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "balneario",
+        "hotel_pousada",
+        "restaurante",
+        "atrativo_natural",
+        "atrativo_cultural",
+        "evento",
+        "artesanato",
+        "servico"
+      ]
+    },
+    "city": {
+      "type": "string"
+    },
+    "neighborhood": {
+      "type": "string"
+    },
+    "description_short": {
+      "type": "string"
+    },
+    "description_full": {
+      "type": "string"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cover_photo": {
+      "type": "string"
+    },
+    "how_to_get_there": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "contact_whatsapp": {
+      "type": "string"
+    },
+    "opening_hours": {
+      "type": "string"
+    },
+    "price_range": {
+      "type": "string",
+      "enum": [
+        "gratuito",
+        "barato",
+        "moderado",
+        "caro"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "access_type": {
+      "type": "string",
+      "enum": [
+        "estrada_pavimentada",
+        "estrada_terra",
+        "embarcacao",
+        "trilha",
+        "misto"
+      ]
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "needs_revision"
+      ],
+      "default": "pending"
+    },
+    "reviewer_notes": {
+      "type": "string"
+    },
+    "related_place_id": {
+      "type": "string",
+      "description": "ID do local existente (para edi\u00e7\u00f5es)"
+    },
+    "suggestion_type": {
+      "type": "string",
+      "enum": [
+        "new_place",
+        "edit_existing"
+      ],
+      "default": "new_place"
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "city"
+  ]
+}

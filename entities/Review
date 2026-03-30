@@ -1,0 +1,41 @@
+{
+  "name": "Review",
+  "type": "object",
+  "properties": {
+    "place_id": {
+      "type": "string",
+      "description": "ID do local avaliado"
+    },
+    "rating": {
+      "type": "number",
+      "description": "Nota de 1 a 5"
+    },
+    "comment": {
+      "type": "string",
+      "description": "Coment\u00e1rio da avalia\u00e7\u00e3o"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fotos da avalia\u00e7\u00e3o"
+    },
+    "author_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "published",
+        "pending",
+        "rejected"
+      ],
+      "default": "published"
+    }
+  },
+  "required": [
+    "place_id",
+    "rating"
+  ]
+}
