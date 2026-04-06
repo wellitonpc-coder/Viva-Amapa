@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Send,
 } from 'lucide-react'
+import MediaHorizontalScroll from '@/components/MediaHorizontalScroll'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -69,6 +70,21 @@ export default function PlaceDetail() {
       if (error) throw error
       return data ?? []
     },
+  })
+  // --- 2.1) Mídias do lugar (fotos e vídeos) ---
+    const { data: medias = [] } = useQuery({
+      queryKey: ['place-medias', placeId],
+      enabled: !!placeId,
+      queryFn: async () => {
+    const { data, error } = await supabase
+      .from('place_media')
+      .select('id, type, url')
+      .eq('place_id', placeId)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+    return data ?? []
+      },  
   })
 
   // --- 3) Próximos (mesma cidade) ---
@@ -317,6 +333,8 @@ export default function PlaceDetail() {
             <p className="text-sm text-slate-600 leading-relaxed">{place.description_full}</p>
           </div>
         )}
+        {/* Galeria de fotos e vídeos */}
+          <MediaHorizontalScroll medias={medias} />
 
         {/* Info Cards */}
         <div className="grid gap-3">

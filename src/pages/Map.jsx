@@ -1,38 +1,56 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import { Link } from 'react-router-dom'
-import { Star, MapPin, Navigation } from 'lucide-react'
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+} from 'react-leaflet'
+import { useNavigate } from 'react-router-dom'
+import {
+  Star,
+  MapPin,
+  LocateFixed,
+  Clock,
+} from 'lucide-react'
+import CategoryChips from '@/components/places/CategoryChips'
 import { Badge } from '@/components/ui/badge'
-import { categoryLabels, categoryColors } from '../components/places/PlaceCard'
-import CategoryChips from '../components/places/CategoryChips'
-import 'leaflet/dist/leaflet.css'
-import L from 'leaflet'
+import { categoryLabels, categoryColors } from '@/components/places/PlaceCard'
 import { supabase } from '@/api/supabaseClient'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
-// ✅ Corrige ícone padrão do Leaflet (quando usado com bundlers)
-// Fix default marker icon (Leaflet + bundlers)
-// Tipos TS não expõem _getIconUrl, mas existe em runtime.
-delete /** @type {any} */ (L.Icon.Default).prototype._getIconUrl;
-
+/* =========================
+   FIX ÍCONES LEAFLET (Vite)
+========================= */
+delete L.Icon.Default.prototype['_getIconUrl']
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-// ✅ Ícone custom para localização do usuário
+  iconRetinaUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+})
+
+/* =========================
+   ÍCONE DO USUÁRIO
+========================= */
 const userLocationIcon = new L.DivIcon({
-  className: '',
-  html: `<div style="
-    width: 18px; height: 18px; border-radius: 50%;
-    background: #3b82f6; border: 3px solid white;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.4);
-  "></div>`,
+  html: `
+    <div style="
+      width:18px;height:18px;border-radius:50%;
+      background:#3b82f6;border:3px solid white;
+      box-shadow:0 0 0 3px rgba(59,130,246,0.35);
+    "></div>
+  `,
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 })
 
-// Haversine distance in km
+/* =========================
+   HAVERSINE DISTANCE (KM)
+========================= */
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371
   const dLat = ((lat2 - lat1) * Math.PI) / 180
@@ -45,167 +63,240 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-// Voa para a localização do usuário quando disponível
-function FlyToUser({ userLocation }) {
+/* =========================
+   ABERTO AGORA
+========================= */
+function isOpenNow(opening) {
+  if (!opening || !opening.includes('-')) return true
+  const [open, close] = opening.split('-')
+
+  const now = new Date()
+  const current = now.getHours() * 60 + now.getMinutes()
+
+  const [oh, om] = open.split(':').map(Number)
+  const [ch, cm] = close.split(':').map(Number)
+
+  return current >= oh * 60 + om && current <= ch * 60 + cm
+}
+
+/* =========================
+   INVALIDATE SIZE (CRÍTICO)
+========================= */
+function InvalidateSize() {
   const map = useMap()
+
   useEffect(() => {
-    if (userLocation) {
-      map.flyTo(userLocation, 12, { duration: 1.5 })
-    }
-  }, [userLocation, map])
+    const t = setTimeout(() => {
+      map.invalidateSize()
+    }, 300)
+    return () => clearTimeout(t)
+  }, [map])
+
   return null
 }
 
-const NEARBY_RADIUS_KM = 20
+/* =========================
+   FLY TO USER
+========================= */
+function FlyToUser({ userLocation, trigger }) {
+  const map = useMap()
 
+  useEffect(() => {
+    if (userLocation && trigger) {
+      map.flyTo(userLocation, 13, { duration: 1.2 })
+    }
+  }, [userLocation, trigger, map])
+
+  return null
+}
+
+/* =========================
+   MAP PAGE
+========================= */
 export default function MapPage() {
+  const navigate = useNavigate()
+
+  const [places, setPlaces] = useState([])
   const [category, setCategory] = useState('all')
+  const [radiusKm, setRadiusKm] = useState(
+    Number(localStorage.getItem('map-radius-km')) || 8
+  )
+  const [onlyOpen, setOnlyOpen] = useState(false)
+
   const [userLocation, setUserLocation] = useState(null)
-  const [locationError, setLocationError] = useState(false)
+  const [hasLocationPermission, setHasLocationPermission] = useState(false)
+  const [flyTrigger, setFlyTrigger] = useState(0)
 
-  // ✅ Buscar lugares publicados no Supabase
-  const { data: places = [], isLoading, isError, error } = useQuery({
-    queryKey: ['places', 'map'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('places')
-        .select('*')
-        .eq('status', 'published')
-        .order('average_rating', { ascending: false })
-        .limit(100)
+  /* Persist radius */
+  useEffect(() => {
+    localStorage.setItem('map-radius-km', radiusKm.toString())
+  }, [radiusKm])
 
-      if (error) throw error
-      return data ?? []
-    },
-  })
-
-  // ✅ Buscar geolocalização do usuário
+  /* Geolocalização (estável para o botão) */
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocationError(true)
+      setHasLocationPermission(true)
       return
     }
 
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => setUserLocation([coords.latitude, coords.longitude]),
-      () => setLocationError(true),
+      ({ coords }) => {
+        setUserLocation([coords.latitude, coords.longitude])
+        setHasLocationPermission(true)
+      },
+      () => {
+        // falhou ou foi negado, mas já sabemos que tentou
+        setHasLocationPermission(true)
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     )
   }, [])
 
-  // ✅ Filtrar por categoria
-  const filteredByCategory = useMemo(() => {
-    return category === 'all' ? places : places.filter((p) => p.category === category)
-  }, [places, category])
+  /* Buscar lugares */
+  useEffect(() => {
+    async function loadPlaces() {
+      const { data, error } = await supabase
+        .from('places')
+        .select('*')
+        .eq('status', 'published')
 
-  // ✅ Só locais com coordenadas, e se tiver userLocation, filtra por raio
-  const withCoords = useMemo(() => {
-    return filteredByCategory.filter((p) => {
-      if (p.latitude == null || p.longitude == null) return false
+      if (!error && data) setPlaces(data)
+    }
 
-      if (!userLocation) return true
+    loadPlaces()
+  }, [])
 
-      return (
-        calculateDistance(userLocation[0], userLocation[1], p.latitude, p.longitude) <=
-        NEARBY_RADIUS_KM
+  /* Filtros + ranking */
+  const filteredPlaces = useMemo(() => {
+    return places
+      .filter(p => p.latitude && p.longitude)
+      .filter(p => category === 'all' || p.category === category)
+      .filter(p => !onlyOpen || isOpenNow(p.opening_hours))
+      .filter(
+        p =>
+          !userLocation ||
+          calculateDistance(
+            userLocation[0],
+            userLocation[1],
+            p.latitude,
+            p.longitude
+          ) <= radiusKm
       )
-    })
-  }, [filteredByCategory, userLocation])
+      .sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0))
+  }, [places, category, onlyOpen, radiusKm, userLocation])
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-lg border-b px-5 pt-6 pb-3">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-slate-900">Mapa</h1>
-
-          {userLocation && (
-            <span className="flex items-center gap-1 text-xs text-blue-600 font-medium">
-              <Navigation className="w-3.5 h-3.5" />
-              Locais próximos ({NEARBY_RADIUS_KM}km)
-            </span>
-          )}
-
-          {!userLocation && locationError && (
-            <span className="text-xs text-slate-400">Localização não disponível</span>
-          )}
-        </div>
+    <div className="flex flex-col h-full">
+      {/* HEADER */}
+      <div className="bg-white px-5 pt-6 pb-4 border-b">
+        <h1 className="text-xl font-bold mb-3">Mapa</h1>
 
         <CategoryChips selected={category} onSelect={setCategory} />
+
+        <div className="flex items-center gap-3 mt-3">
+          <label className="flex items-center gap-1 text-sm">
+            <input
+              type="checkbox"
+              checked={onlyOpen}
+              onChange={() => setOnlyOpen(!onlyOpen)}
+            />
+            <Clock className="w-4 h-4" />
+            Aberto agora
+          </label>
+
+          <span className="text-xs text-slate-500">
+            {filteredPlaces.length} locais encontrados
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-500 mt-2">
+          Mostrar locais em até <strong>{radiusKm} km</strong>
+        </p>
+
+        <input
+          type="range"
+          min={1}
+          max={30}
+          value={radiusKm}
+          onChange={e => setRadiusKm(Number(e.target.value))}
+          className="w-full accent-emerald-600"
+        />
       </div>
 
-      <div className="flex-1 relative">
-        {isError && (
-          <div className="absolute z-[999] top-4 left-4 right-4 bg-white border rounded-xl p-3 text-sm text-red-600 shadow">
-            Erro ao carregar locais: {error?.message || 'Erro desconhecido'}
-          </div>
-        )}
-
+      {/* MAPA */}
+      <div className="flex-1 relative min-h-0">
         <MapContainer
-          center={[0.0356, -51.0656]} // base Macapá
-          zoom={9}
-          className="h-full w-full"
-          scrollWheelZoom={true}
+          center={[-0.0356, -51.0705]} // Macapá
+          zoom={11}
+          style={{ height: '100%', width: '100%' }}
         >
+          <InvalidateSize />
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            attribution="&copy; OpenStreetMap"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          <FlyToUser userLocation={userLocation} />
+          <FlyToUser userLocation={userLocation} trigger={flyTrigger} />
 
-          {/* Marcador do usuário */}
+          {/* Usuário */}
           {userLocation && (
-            <Marker position={userLocation} icon={userLocationIcon}>
-              <Popup>
-                <span className="font-semibold text-blue-600">Você está aqui</span>
-              </Popup>
-            </Marker>
+            <Marker position={userLocation} icon={userLocationIcon} />
           )}
 
-          {/* Marcadores dos locais */}
-          {!isLoading &&
-            withCoords.map((place) => (
-              <Marker key={place.id} position={[place.latitude, place.longitude]}>
-                <Popup>
-                  <div className="min-w-[200px]">
-                    <Link to={`/PlaceDetail?id=${place.id}`} className="block">
-                      {place.cover_photo && (
-                        <img
-                          src={place.cover_photo}
-                          alt={place.name}
-                          className="w-full h-24 object-cover rounded-lg mb-2"
-                        />
-                      )}
+          {/* Lugares */}
+          {filteredPlaces.map(place => (
+            <Marker
+              key={place.id}
+              position={[place.latitude, place.longitude]}
+              eventHandlers={{
+                click: () =>
+                  navigate(`/PlaceDetail?id=${place.id}`),
+              }}
+            >
+              <Popup>
+                <div className="min-w-[180px]">
+                  <h3 className="font-bold text-sm">{place.name}</h3>
 
-                      <h3 className="font-bold text-sm">{place.name}</h3>
+                  <p className="text-xs flex gap-1 text-slate-500">
+                    <MapPin className="w-3 h-3" />
+                    {place.city}
+                  </p>
 
-                      <p className="text-xs text-slate-500 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {place.city}
-                      </p>
+                  <div className="flex gap-2 mt-1">
+                    <Badge
+                      className={`text-[10px] ${
+                        categoryColors[place.category] ||
+                        'bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {categoryLabels[place.category]}
+                    </Badge>
 
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge
-                          className={`text-[10px] px-1.5 py-0 ${
-                            categoryColors[place.category] || 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {categoryLabels[place.category] || place.category}
-                        </Badge>
-
-                        {place.average_rating > 0 && (
-                          <span className="flex items-center gap-0.5 text-xs">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            {Number(place.average_rating).toFixed(1)}
-                          </span>
-                        )}
-                      </div>
-                    </Link>
+                    {place.average_rating > 0 && (
+                      <span className="flex gap-0.5 items-center text-xs">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        {place.average_rating.toFixed(1)}
+                      </span>
+                    )}
                   </div>
-                </Popup>
-              </Marker>
-            ))}
+                </div>
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
+
+        {/* BOTÃO CENTRALIZAR (ESTÁVEL) */}
+        {hasLocationPermission && (
+          <button
+            onClick={() => {
+              if (userLocation) setFlyTrigger(n => n + 1)
+            }}
+            className="absolute bottom-24 right-4 z-20
+                       bg-white shadow-lg rounded-full p-3"
+          >
+            <LocateFixed className="w-5 h-5 text-emerald-600" />
+          </button>
+        )}
       </div>
     </div>
   )

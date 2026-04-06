@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Viva-Amapa</string>
+    <string name="title_activity_main">Viva-Amapa</string>
+    <string name="package_name">br.gov.ap.turismo</string>
+    <string name="custom_url_scheme">br.gov.ap.turismo</string>
+</resources>
